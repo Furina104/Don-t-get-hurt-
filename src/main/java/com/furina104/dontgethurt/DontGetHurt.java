@@ -139,13 +139,19 @@ public class DontGetHurt implements ModInitializer {
 
     private static void spawnWarden(ServerWorld world, ServerPlayerEntity player) {
         Vec3d pos = getRandomSpawnPos(player);
-        WardenEntity warden = EntityType.WARDEN.create(world, SpawnReason.TRIGGERED);
+        // 找到地面位置，避免生成在半空中或卡在方块里
+        int topY = world.getTopY(Heightmap.Type.MOTION_BLOCKING, (int) Math.floor(pos.x), (int) Math.floor(pos.z));
+        pos = new Vec3d(pos.x, topY, pos.z);
+
+        WardenEntity warden = EntityType.WARDEN.create(world, SpawnReason.EVENT);
         if (warden != null) {
             warden.refreshPositionAndAngles(pos.x, pos.y, pos.z, 0, 0);
             warden.setPersistent();
+            // 确保监守者是站立姿势，跳过钻地动画
             warden.setPose(EntityPose.STANDING);
             world.spawnEntityAndPassengers(warden);
-            // 生成后再设置目标和愤怒值，避免被生成逻辑重置
+
+            // 生成后设置，避免被初始化逻辑覆盖
             warden.increaseAngerAt(player, 150);
             warden.setAttacker(player);
             warden.setTarget(player);
