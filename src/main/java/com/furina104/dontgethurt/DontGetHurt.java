@@ -24,6 +24,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.Heightmap;
 import org.slf4j.Logger;
@@ -148,15 +149,11 @@ public class DontGetHurt implements ModInitializer {
         Vec3d pos = getRandomSpawnPos(player);
         // 找到地面位置，避免生成在半空中或卡在方块里
         int topY = world.getTopY(Heightmap.Type.MOTION_BLOCKING, (int) Math.floor(pos.x), (int) Math.floor(pos.z));
-        pos = new Vec3d(pos.x, topY, pos.z);
+        BlockPos blockPos = new BlockPos((int) Math.floor(pos.x), topY, (int) Math.floor(pos.z));
 
-        WardenEntity warden = EntityType.WARDEN.create(world, SpawnReason.EVENT);
+        WardenEntity warden = EntityType.WARDEN.spawn(world, blockPos, SpawnReason.EVENT);
         if (warden != null) {
-            warden.refreshPositionAndAngles(pos.x, pos.y, pos.z, 0, 0);
             warden.setPersistent();
-            // 确保监守者是站立姿势，跳过钻地动画
-            warden.setPose(EntityPose.STANDING);
-            world.spawnEntityAndPassengers(warden);
 
             // 生成后设置，避免被初始化逻辑覆盖
             warden.increaseAngerAt(player, 150);
@@ -191,13 +188,12 @@ public class DontGetHurt implements ModInitializer {
         // 生成骷髅
         for (int i = 0; i < config.skeletonCount; i++) {
             Vec3d pos = getRandomSpawnPos(player);
-            SkeletonEntity skeleton = EntityType.SKELETON.create(world, SpawnReason.EVENT);
+            BlockPos blockPos = BlockPos.ofFloored(pos.x, pos.y, pos.z);
+            SkeletonEntity skeleton = EntityType.SKELETON.spawn(world, blockPos, SpawnReason.EVENT);
             if (skeleton != null) {
-                skeleton.refreshPositionAndAngles(pos.x, pos.y, pos.z, 0, 0);
-                // 给骷髅装备弓箭
+                // 确保骷髅有弓（spawn方法会自动装备，但保险起见再确认一下）
                 skeleton.equipStack(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
                 skeleton.setTarget(player);
-                world.spawnEntityAndPassengers(skeleton);
             }
         }
     }
