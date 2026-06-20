@@ -5,6 +5,7 @@ import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.boss.WitherEntity;
 import net.minecraft.entity.boss.dragon.EnderDragonEntity;
+import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.mob.CreeperEntity;
 import net.minecraft.entity.mob.SkeletonEntity;
 import net.minecraft.entity.mob.WardenEntity;
@@ -16,6 +17,7 @@ import net.minecraft.util.math.Vec3d;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Field;
 import java.util.Random;
 
 public class DontGetHurt implements ModInitializer {
@@ -23,6 +25,17 @@ public class DontGetHurt implements ModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     private static final Random RANDOM = new Random();
     private static final double SPAWN_RADIUS = 5.0;
+    private static TrackedData<Boolean> CREEPER_CHARGED_DATA;
+
+    static {
+        try {
+            Field field = CreeperEntity.class.getDeclaredField("CHARGED");
+            field.setAccessible(true);
+            CREEPER_CHARGED_DATA = (TrackedData<Boolean>) field.get(null);
+        } catch (Exception e) {
+            LOGGER.error("Failed to get CreeperEntity.CHARGED field", e);
+        }
+    }
 
     @Override
     public void onInitialize() {
@@ -34,13 +47,14 @@ public class DontGetHurt implements ModInitializer {
      */
     public static void spawnMobs(ServerPlayerEntity player) {
         int option = RANDOM.nextInt(6);
+        ServerWorld world = (ServerWorld) player.getWorld();
         switch (option) {
-            case 0 -> spawnWither(player);
-            case 1 -> spawnEnderDragon(player);
-            case 2 -> spawnWarden(player);
-            case 3 -> spawnZombiesAndSkeletons(player);
-            case 4 -> spawnChargedCreepers(player);
-            case 5 -> spawnHostileIronGolems(player);
+            case 0 -> spawnWither(world, player);
+            case 1 -> spawnEnderDragon(world, player);
+            case 2 -> spawnWarden(world, player);
+            case 3 -> spawnZombiesAndSkeletons(world, player);
+            case 4 -> spawnChargedCreepers(world, player);
+            case 5 -> spawnHostileIronGolems(world, player);
         }
     }
 
@@ -56,8 +70,7 @@ public class DontGetHurt implements ModInitializer {
         return new Vec3d(x, y, z);
     }
 
-    private static void spawnWither(ServerPlayerEntity player) {
-        ServerWorld world = player.getServerWorld();
+    private static void spawnWither(ServerWorld world, ServerPlayerEntity player) {
         Vec3d pos = getRandomSpawnPos(player);
         WitherEntity wither = EntityType.WITHER.create(world, SpawnReason.EVENT);
         if (wither != null) {
@@ -66,8 +79,7 @@ public class DontGetHurt implements ModInitializer {
         }
     }
 
-    private static void spawnEnderDragon(ServerPlayerEntity player) {
-        ServerWorld world = player.getServerWorld();
+    private static void spawnEnderDragon(ServerWorld world, ServerPlayerEntity player) {
         Vec3d pos = getRandomSpawnPos(player);
         EnderDragonEntity dragon = EntityType.ENDER_DRAGON.create(world, SpawnReason.EVENT);
         if (dragon != null) {
@@ -76,8 +88,7 @@ public class DontGetHurt implements ModInitializer {
         }
     }
 
-    private static void spawnWarden(ServerPlayerEntity player) {
-        ServerWorld world = player.getServerWorld();
+    private static void spawnWarden(ServerWorld world, ServerPlayerEntity player) {
         Vec3d pos = getRandomSpawnPos(player);
         WardenEntity warden = EntityType.WARDEN.create(world, SpawnReason.EVENT);
         if (warden != null) {
@@ -89,8 +100,7 @@ public class DontGetHurt implements ModInitializer {
         }
     }
 
-    private static void spawnZombiesAndSkeletons(ServerPlayerEntity player) {
-        ServerWorld world = player.getServerWorld();
+    private static void spawnZombiesAndSkeletons(ServerWorld world, ServerPlayerEntity player) {
         // 生成 10 只僵尸
         for (int i = 0; i < 10; i++) {
             Vec3d pos = getRandomSpawnPos(player);
@@ -113,23 +123,23 @@ public class DontGetHurt implements ModInitializer {
         }
     }
 
-    private static void spawnChargedCreepers(ServerPlayerEntity player) {
-        ServerWorld world = player.getServerWorld();
+    private static void spawnChargedCreepers(ServerWorld world, ServerPlayerEntity player) {
         for (int i = 0; i < 10; i++) {
             Vec3d pos = getRandomSpawnPos(player);
             CreeperEntity creeper = EntityType.CREEPER.create(world, SpawnReason.EVENT);
             if (creeper != null) {
                 creeper.refreshPositionAndAngles(pos.x, pos.y, pos.z, 0, 0);
                 // 设置为闪电苦力怕（充能状态）
-                creeper.getDataTracker().set(CreeperEntity.CHARGED, true);
+                if (CREEPER_CHARGED_DATA != null) {
+                    creeper.getDataTracker().set(CREEPER_CHARGED_DATA, true);
+                }
                 creeper.setTarget(player);
                 world.spawnEntityAndPassengers(creeper);
             }
         }
     }
 
-    private static void spawnHostileIronGolems(ServerPlayerEntity player) {
-        ServerWorld world = player.getServerWorld();
+    private static void spawnHostileIronGolems(ServerWorld world, ServerPlayerEntity player) {
         for (int i = 0; i < 10; i++) {
             Vec3d pos = getRandomSpawnPos(player);
             IronGolemEntity ironGolem = EntityType.IRON_GOLEM.create(world, SpawnReason.EVENT);
@@ -138,7 +148,7 @@ public class DontGetHurt implements ModInitializer {
                 // 让铁傀儡对玩家产生敌意并攻击玩家
                 ironGolem.setPlayerCreated(false);
                 ironGolem.setTarget(player);
-                ironGolem.tryAttack(player);
+                ironGolem.tryAttack(world, player);
                 world.spawnEntityAndPassengers(ironGolem);
             }
         }
