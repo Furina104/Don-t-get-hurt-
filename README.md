@@ -1,6 +1,5 @@
 # 不要受伤 (Don't Get Hurt)
-
-一个 Minecraft Fabric 模组，版本 1.21.11。
+Minecraft Fabric 模组，版本 1.21.11
 
 ## 功能
 
@@ -12,23 +11,8 @@
 4. 僵尸 ×10 + 骷髅 ×10
 5. 苦力怕 ×10
 6. 敌对铁傀儡 ×10
-
-## 构建
-
-```bash
-./gradlew build
-```
-
-构建产物在 `build/libs/` 目录下。
-
 ## 安装
 
-1. 安装 Fabric Loader 和 Fabric API
-2. 将模组 jar 文件放入 `.minecraft/mods` 文件夹
+1. 安装 Fabric API
+2. 将模组 jar 文件放入 mods 文件夹
 3. 启动游戏
-
-## 注意事项
-
-- 末影龙在主世界生成可能会导致异常行为
-- 持续伤害（如着火）会每次触发都生成生物，请小心
-- 本模组仅供娱乐，可能严重影响游戏平衡
