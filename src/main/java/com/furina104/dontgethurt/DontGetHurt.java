@@ -1,6 +1,7 @@
 package com.furina104.dontgethurt;
 
 import net.fabricmc.api.ModInitializer;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.boss.WitherEntity;
@@ -26,14 +27,19 @@ public class DontGetHurt implements ModInitializer {
     private static final Random RANDOM = new Random();
     private static final double SPAWN_RADIUS = 5.0;
     private static TrackedData<Boolean> CREEPER_CHARGED_DATA;
+    private static Field ENTITY_WORLD_FIELD;
 
     static {
         try {
-            Field field = CreeperEntity.class.getDeclaredField("CHARGED");
-            field.setAccessible(true);
-            CREEPER_CHARGED_DATA = (TrackedData<Boolean>) field.get(null);
+            Field chargedField = CreeperEntity.class.getDeclaredField("CHARGED");
+            chargedField.setAccessible(true);
+            CREEPER_CHARGED_DATA = (TrackedData<Boolean>) chargedField.get(null);
+
+            Field worldField = Entity.class.getDeclaredField("world");
+            worldField.setAccessible(true);
+            ENTITY_WORLD_FIELD = worldField;
         } catch (Exception e) {
-            LOGGER.error("Failed to get CreeperEntity.CHARGED field", e);
+            LOGGER.error("Failed to get reflected fields", e);
         }
     }
 
@@ -47,7 +53,13 @@ public class DontGetHurt implements ModInitializer {
      */
     public static void spawnMobs(ServerPlayerEntity player) {
         int option = RANDOM.nextInt(6);
-        ServerWorld world = (ServerWorld) player.world;
+        ServerWorld world = null;
+        try {
+            world = (ServerWorld) ENTITY_WORLD_FIELD.get(player);
+        } catch (IllegalAccessException e) {
+            LOGGER.error("Failed to get world from player", e);
+            return;
+        }
         switch (option) {
             case 0 -> spawnWither(world, player);
             case 1 -> spawnEnderDragon(world, player);
