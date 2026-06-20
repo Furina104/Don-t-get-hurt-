@@ -156,21 +156,10 @@ public class DontGetHurt implements ModInitializer {
             warden.setPersistent();
 
             // 生成后设置，避免被初始化逻辑覆盖
-            warden.increaseAngerAt(player, 150);
+            warden.increaseAngerAt(player, 150, false);
             warden.setAttacker(player);
             warden.setTarget(player);
             warden.setAiDisabled(false);
-
-            // 手动添加完整的 AI 目标（监守者默认使用大脑系统，直接生成不会激活）
-            // 目标选择器：主动寻找并攻击玩家
-            warden.targetSelector.add(1, new ActiveTargetGoal<>(warden, PlayerEntity.class, true));
-            // 行为选择器：近战攻击
-            warden.goalSelector.add(1, new MeleeAttackGoal(warden, 1.2D, false));
-            // 行为选择器：随机游荡
-            warden.goalSelector.add(2, new WanderAroundFarGoal(warden, 1.0D));
-
-            // 确保目标是玩家
-            warden.setTarget(player);
         }
     }
 
