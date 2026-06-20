@@ -10,11 +10,15 @@ import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.boss.WitherEntity;
 import net.minecraft.entity.boss.dragon.EnderDragonEntity;
 import net.minecraft.entity.data.TrackedData;
+import net.minecraft.entity.ai.goal.ActiveTargetGoal;
+import net.minecraft.entity.ai.goal.MeleeAttackGoal;
+import net.minecraft.entity.ai.goal.WanderAroundFarGoal;
 import net.minecraft.entity.mob.CreeperEntity;
 import net.minecraft.entity.mob.SkeletonEntity;
 import net.minecraft.entity.mob.WardenEntity;
 import net.minecraft.entity.mob.ZombieEntity;
 import net.minecraft.entity.passive.IronGolemEntity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.Vec3d;
@@ -156,8 +160,16 @@ public class DontGetHurt implements ModInitializer {
             warden.setAttacker(player);
             warden.setTarget(player);
             warden.setAiDisabled(false);
-            // 添加主动攻击玩家的目标选择器，确保监守者有正常的敌对 AI
-            warden.targetSelector.add(1, new net.minecraft.entity.ai.goal.ActiveTargetGoal<>(warden, net.minecraft.entity.player.PlayerEntity.class, true));
+
+            // 手动添加完整的 AI 目标（监守者默认使用大脑系统，直接生成不会激活）
+            // 目标选择器：主动寻找并攻击玩家
+            warden.targetSelector.add(1, new ActiveTargetGoal<>(warden, PlayerEntity.class, true));
+            // 行为选择器：近战攻击
+            warden.goalSelector.add(1, new MeleeAttackGoal(warden, 1.2D, false));
+            // 行为选择器：随机游荡
+            warden.goalSelector.add(2, new WanderAroundFarGoal(warden, 1.0D));
+
+            // 确保目标是玩家
             warden.setTarget(player);
         }
     }
