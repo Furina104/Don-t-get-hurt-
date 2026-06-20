@@ -4,6 +4,7 @@ import com.furina104.dontgethurt.config.ModConfig;
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.serializer.GsonConfigSerializer;
 import net.fabricmc.api.ModInitializer;
+import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.boss.WitherEntity;
@@ -17,6 +18,7 @@ import net.minecraft.entity.passive.IronGolemEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.Heightmap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -141,11 +143,13 @@ public class DontGetHurt implements ModInitializer {
         if (warden != null) {
             warden.refreshPositionAndAngles(pos.x, pos.y, pos.z, 0, 0);
             warden.setPersistent();
-            // 让监守者直接对玩家产生最大愤怒值
+            warden.setPose(EntityPose.STANDING);
+            world.spawnEntityAndPassengers(warden);
+            // 生成后再设置目标和愤怒值，避免被生成逻辑重置
             warden.increaseAngerAt(player, 150);
             warden.setAttacker(player);
             warden.setTarget(player);
-            world.spawnEntityAndPassengers(warden);
+            warden.setAiDisabled(false);
         }
     }
 
