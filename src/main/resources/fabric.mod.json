@@ -17,6 +17,9 @@
   "entrypoints": {
     "main": [
       "com.furina104.dontgethurt.DontGetHurt"
+    ],
+    "modmenu": [
+      "com.furina104.dontgethurt.config.ModMenuIntegration"
     ]
   },
   "mixins": [
@@ -25,6 +28,10 @@
   "depends": {
     "fabricloader": ">=0.15.0",
     "minecraft": "~1.21.11",
-    "java": ">=21"
+    "java": ">=21",
+    "cloth-config": ">=15.0.0"
+  },
+  "suggests": {
+    "modmenu": ">=11.0.0"
   }
 }

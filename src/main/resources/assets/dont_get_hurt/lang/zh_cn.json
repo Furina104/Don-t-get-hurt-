@@ -1,0 +1,46 @@
+{
+  "text.autoconfig.dont_get_hurt.title": "不要受伤 - 配置",
+
+  "text.autoconfig.dont_get_hurt.category.general": "通用设置",
+  "text.autoconfig.dont_get_hurt.category.mobs": "生物开关",
+  "text.autoconfig.dont_get_hurt.category.amounts": "生成数量",
+
+  "text.autoconfig.dont_get_hurt.option.enabled": "启用模组",
+  "text.autoconfig.dont_get_hurt.option.enabled.@Tooltip": "是否启用整个模组功能",
+
+  "text.autoconfig.dont_get_hurt.option.spawnRadius": "生成半径",
+  "text.autoconfig.dont_get_hurt.option.spawnRadius.@Tooltip": "生物生成的半径范围（格）",
+
+  "text.autoconfig.dont_get_hurt.option.cooldownTicks": "冷却时间（刻）",
+  "text.autoconfig.dont_get_hurt.option.cooldownTicks.@Tooltip": "两次触发之间的冷却时间，20刻=1秒",
+
+  "text.autoconfig.dont_get_hurt.option.enableWither": "启用凋灵",
+  "text.autoconfig.dont_get_hurt.option.enableWither.@Tooltip": "是否允许生成凋灵",
+
+  "text.autoconfig.dont_get_hurt.option.enableEnderDragon": "启用末影龙",
+  "text.autoconfig.dont_get_hurt.option.enableEnderDragon.@Tooltip": "是否允许生成末影龙",
+
+  "text.autoconfig.dont_get_hurt.option.enableWarden": "启用监守者",
+  "text.autoconfig.dont_get_hurt.option.enableWarden.@Tooltip": "是否允许生成监守者（寻声守卫）",
+
+  "text.autoconfig.dont_get_hurt.option.enableZombiesAndSkeletons": "启用僵尸和骷髅",
+  "text.autoconfig.dont_get_hurt.option.enableZombiesAndSkeletons.@Tooltip": "是否允许生成僵尸和骷髅",
+
+  "text.autoconfig.dont_get_hurt.option.enableChargedCreepers": "启用高压爬行者",
+  "text.autoconfig.dont_get_hurt.option.enableChargedCreepers.@Tooltip": "是否允许生成高压爬行者（闪电苦力怕）",
+
+  "text.autoconfig.dont_get_hurt.option.enableHostileIronGolems": "启用敌对铁傀儡",
+  "text.autoconfig.dont_get_hurt.option.enableHostileIronGolems.@Tooltip": "是否允许生成敌对铁傀儡",
+
+  "text.autoconfig.dont_get_hurt.option.zombieCount": "僵尸数量",
+  "text.autoconfig.dont_get_hurt.option.zombieCount.@Tooltip": "每次生成的僵尸数量",
+
+  "text.autoconfig.dont_get_hurt.option.skeletonCount": "骷髅数量",
+  "text.autoconfig.dont_get_hurt.option.skeletonCount.@Tooltip": "每次生成的骷髅数量",
+
+  "text.autoconfig.dont_get_hurt.option.chargedCreeperCount": "高压爬行者数量",
+  "text.autoconfig.dont_get_hurt.option.chargedCreeperCount.@Tooltip": "每次生成的高压爬行者数量",
+
+  "text.autoconfig.dont_get_hurt.option.ironGolemCount": "铁傀儡数量",
+  "text.autoconfig.dont_get_hurt.option.ironGolemCount.@Tooltip": "每次生成的铁傀儡数量"
+}
