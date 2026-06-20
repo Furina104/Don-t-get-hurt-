@@ -1,6 +1,6 @@
 # 不要受伤 (Don't Get Hurt)
 
-一个 Minecraft Fabric 模组，版本 1.21.1。
+一个 Minecraft Fabric 模组，版本 1.21.11。
 
 ## 功能
 
