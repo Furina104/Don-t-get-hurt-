@@ -47,7 +47,7 @@ public class DontGetHurt implements ModInitializer {
      */
     public static void spawnMobs(ServerPlayerEntity player) {
         int option = RANDOM.nextInt(6);
-        ServerWorld world = (ServerWorld) player.getWorld();
+        ServerWorld world = (ServerWorld) player.world;
         switch (option) {
             case 0 -> spawnWither(world, player);
             case 1 -> spawnEnderDragon(world, player);
