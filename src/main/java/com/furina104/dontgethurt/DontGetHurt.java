@@ -156,6 +156,9 @@ public class DontGetHurt implements ModInitializer {
             warden.setAttacker(player);
             warden.setTarget(player);
             warden.setAiDisabled(false);
+            // 添加主动攻击玩家的目标选择器，确保监守者有正常的敌对 AI
+            warden.targetSelector.add(1, new net.minecraft.entity.ai.goal.ActiveTargetGoal<>(warden, net.minecraft.entity.player.PlayerEntity.class, true));
+            warden.setTarget(player);
         }
     }
 
