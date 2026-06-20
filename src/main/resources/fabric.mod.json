@@ -20,10 +20,10 @@
     ]
   },
   "mixins": [
+    "dont_get_hurt.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.15.0",
-    "fabric": "*",
     "minecraft": "~1.21.11",
     "java": ">=21"
   }
