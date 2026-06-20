@@ -10,6 +10,7 @@ import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.boss.WitherEntity;
 import net.minecraft.entity.boss.dragon.EnderDragonEntity;
 import net.minecraft.entity.data.TrackedData;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.ai.goal.ActiveTargetGoal;
 import net.minecraft.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.entity.ai.goal.WanderAroundFarGoal;
@@ -19,6 +20,8 @@ import net.minecraft.entity.mob.WardenEntity;
 import net.minecraft.entity.mob.ZombieEntity;
 import net.minecraft.entity.passive.IronGolemEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.Vec3d;
@@ -191,6 +194,8 @@ public class DontGetHurt implements ModInitializer {
             SkeletonEntity skeleton = EntityType.SKELETON.create(world, SpawnReason.EVENT);
             if (skeleton != null) {
                 skeleton.refreshPositionAndAngles(pos.x, pos.y, pos.z, 0, 0);
+                // 给骷髅装备弓箭
+                skeleton.equipStack(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
                 skeleton.setTarget(player);
                 world.spawnEntityAndPassengers(skeleton);
             }
