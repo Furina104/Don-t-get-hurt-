@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "dont_get_hurt",
+  "version": "${version}",
+  "name": "不要受伤",
+  "description": "受到伤害时会在附近生成随机敌对生物的模组",
+  "authors": [
+    "Furina"
+  ],
+  "contact": {
+    "homepage": "https://github.com/Furina104/Don-t-get-hurt-",
+    "sources": "https://github.com/Furina104/Don-t-get-hurt-"
+  },
+  "license": "MIT",
+  "icon": "assets/dont_get_hurt/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.furina.dontgethurt.DontGetHurt"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.0",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
