@@ -9,6 +9,8 @@ import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.boss.WitherEntity;
 import net.minecraft.entity.boss.dragon.EnderDragonEntity;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.ai.goal.ActiveTargetGoal;
 import net.minecraft.entity.ai.goal.MeleeAttackGoal;
@@ -29,6 +31,8 @@ import net.minecraft.world.Heightmap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -39,10 +43,110 @@ public class DontGetHurt implements ModInitializer {
     public static final String MOD_ID = "dont_get_hurt";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     private static final Random RANDOM = new Random();
+    private static TrackedData<Boolean> CREEPER_CHARGED_DATA;
+    private static Method nbtWriteMethod;
+    private static boolean nbtWriteReturnsNbt = false;
+    private static Method nbtReadMethod;
 
     private static ModConfig config;
     private static final ConcurrentHashMap<UUID, Long> cooldownMap = new ConcurrentHashMap<>();
     private static final ThreadLocal<Boolean> isSpawning = ThreadLocal.withInitial(() -> false);
+
+    static {
+        // 查找 NBT 读写方法
+        try {
+            Class<?> entityClass = net.minecraft.entity.Entity.class;
+            Method writeMethod = null;
+            Method readMethod = null;
+            boolean writeReturnsNbt = false;
+
+            // 遍历所有 public 方法，包括继承的
+            for (Method method : entityClass.getMethods()) {
+                if (method.getParameterCount() == 1 && method.getParameterTypes()[0] == NbtCompound.class) {
+                    String name = method.getName().toLowerCase();
+                    // 写方法：名字包含 save/write/put/to
+                    if (name.contains("save") || name.contains("write") || name.contains("put") || name.contains("to")) {
+                        if (writeMethod == null) {
+                            writeMethod = method;
+                            writeReturnsNbt = (method.getReturnType() == NbtCompound.class);
+                            method.setAccessible(true);
+                            LOGGER.info("Found candidate write method: {} (returnsNbt: {})", method.getName(), writeReturnsNbt);
+                        }
+                    }
+                    // 读方法：名字包含 load/read/get/from
+                    else if (name.contains("load") || name.contains("read") || name.contains("get") || name.contains("from")) {
+                        if (readMethod == null && method.getReturnType() == void.class) {
+                            readMethod = method;
+                            method.setAccessible(true);
+                            LOGGER.info("Found candidate read method: {}", method.getName());
+                        }
+                    }
+                }
+            }
+
+            // 如果 public 方法没找到，再试试 declared 方法（包括 private）
+            if (writeMethod == null || readMethod == null) {
+                for (Method method : entityClass.getDeclaredMethods()) {
+                    if (method.getParameterCount() == 1 && method.getParameterTypes()[0] == NbtCompound.class) {
+                        String name = method.getName().toLowerCase();
+                        if ((name.contains("save") || name.contains("write") || name.contains("nbt")) && writeMethod == null) {
+                            writeMethod = method;
+                            writeReturnsNbt = (method.getReturnType() == NbtCompound.class);
+                            method.setAccessible(true);
+                            LOGGER.info("Found candidate write method (declared): {} (returnsNbt: {})", method.getName(), writeReturnsNbt);
+                        }
+                        if ((name.contains("load") || name.contains("read") || name.contains("nbt")) && readMethod == null) {
+                            readMethod = method;
+                            method.setAccessible(true);
+                            LOGGER.info("Found candidate read method (declared): {}", method.getName());
+                        }
+                    }
+                }
+            }
+
+            nbtWriteMethod = writeMethod;
+            nbtWriteReturnsNbt = writeReturnsNbt;
+            nbtReadMethod = readMethod;
+
+            LOGGER.info("Final NBT methods - write: {} (returnsNbt: {}), read: {}",
+                nbtWriteMethod != null ? nbtWriteMethod.getName() : "null",
+                nbtWriteReturnsNbt,
+                nbtReadMethod != null ? nbtReadMethod.getName() : "null");
+        } catch (Exception e) {
+            LOGGER.error("Failed to find NBT methods", e);
+        }
+
+        // 查找 CHARGED 字段
+        try {
+            // 先尝试直接找 CHARGED 字段
+            Field chargedField = null;
+            try {
+                chargedField = CreeperEntity.class.getDeclaredField("CHARGED");
+            } catch (NoSuchFieldException e) {
+                // 找不到的话，遍历所有 TrackedData 类型的静态字段
+                LOGGER.warn("CHARGED field not found directly, searching all TrackedData fields...");
+                for (Field field : CreeperEntity.class.getDeclaredFields()) {
+                    if (field.getType() == TrackedData.class) {
+                        field.setAccessible(true);
+                        LOGGER.info("Found TrackedData field: {}", field.getName());
+                        if (chargedField == null && (field.getName().equalsIgnoreCase("CHARGED") || field.getName().equalsIgnoreCase("IS_CHARGED"))) {
+                            chargedField = field;
+                        }
+                    }
+                }
+            }
+
+            if (chargedField != null) {
+                chargedField.setAccessible(true);
+                CREEPER_CHARGED_DATA = (TrackedData<Boolean>) chargedField.get(null);
+                LOGGER.info("Found CREEPER_CHARGED_DATA field: {}", chargedField.getName());
+            } else {
+                LOGGER.error("Could not find any CHARGED TrackedData field");
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to get CreeperEntity CHARGED field", e);
+        }
+    }
 
     @Override
     public void onInitialize() {
@@ -187,16 +291,47 @@ public class DontGetHurt implements ModInitializer {
             CreeperEntity creeper = EntityType.CREEPER.create(world, SpawnReason.EVENT);
             if (creeper != null) {
                 creeper.refreshPositionAndAngles(pos.x, topY, pos.z, 0, 0);
+
+                // 设置为闪电苦力怕（充能状态）
+                // 优先使用 TrackedData 方式，如果失败则使用 NBT 方式
+                boolean charged = false;
+                if (CREEPER_CHARGED_DATA != null) {
+                    try {
+                        creeper.getDataTracker().set(CREEPER_CHARGED_DATA, true);
+                        charged = true;
+                        LOGGER.info("Set charged via TrackedData");
+                    } catch (Exception e) {
+                        LOGGER.warn("Failed to set charged via TrackedData, falling back to NBT", e);
+                    }
+                }
+
+                if (!charged && nbtWriteMethod != null && nbtReadMethod != null) {
+                    // 使用反射调用 NBT 方法设置充能状态
+                    try {
+                        NbtCompound nbt = new NbtCompound();
+                        if (nbtWriteReturnsNbt) {
+                            // 写方法返回 NbtCompound，使用返回值
+                            nbt = (NbtCompound) nbtWriteMethod.invoke(creeper, nbt);
+                        } else {
+                            // 写方法返回 void，直接修改传入的对象
+                            nbtWriteMethod.invoke(creeper, nbt);
+                        }
+                        nbt.putBoolean("powered", true);
+                        nbt.putShort("Fuse", (short) 1);
+                        nbtReadMethod.invoke(creeper, nbt);
+                        charged = true;
+                        LOGGER.info("Set charged via NBT - powered: {}, Fuse: {}", nbt.getBoolean("powered"), nbt.getShort("Fuse"));
+                    } catch (Exception e) {
+                        LOGGER.warn("Failed to set charged via NBT reflection", e);
+                    }
+                }
+
+                if (!charged) {
+                    LOGGER.warn("All methods failed to set creeper as charged, spawning normal creeper");
+                }
+
                 creeper.setTarget(player);
                 world.spawnEntityAndPassengers(creeper);
-
-                // 生成闪电击中苦力怕，让它变成闪电苦力怕
-                // 使用游戏原版机制，100% 可靠
-                var lightning = EntityType.LIGHTNING_BOLT.create(world, SpawnReason.TRIGGERED);
-                if (lightning != null) {
-                    lightning.refreshPositionAndAngles(pos.x, topY, pos.z, 0, 0);
-                    world.spawnEntityAndPassengers(lightning);
-                }
             }
         }
     }
