@@ -50,29 +50,11 @@ public class DontGetHurt implements ModInitializer {
 
     static {
         try {
-            // 尝试通过字段名查找
-            Field chargedField = null;
-            try {
-                chargedField = CreeperEntity.class.getDeclaredField("CHARGED");
-            } catch (NoSuchFieldException e) {
-                // 如果找不到，遍历所有 TrackedData<Boolean> 类型的字段
-                for (Field field : CreeperEntity.class.getDeclaredFields()) {
-                    if (field.getType().equals(TrackedData.class)) {
-                        field.setAccessible(true);
-                        TrackedData<?> data = (TrackedData<?>) field.get(null);
-                        if (data.getType() != null && data.getType().getComponentType() == Boolean.class) {
-                            chargedField = field;
-                            break;
-                        }
-                    }
-                }
-            }
-            if (chargedField != null) {
-                chargedField.setAccessible(true);
-                CREEPER_CHARGED_DATA = (TrackedData<Boolean>) chargedField.get(null);
-            }
+            Field chargedField = CreeperEntity.class.getDeclaredField("CHARGED");
+            chargedField.setAccessible(true);
+            CREEPER_CHARGED_DATA = (TrackedData<Boolean>) chargedField.get(null);
         } catch (Exception e) {
-            LOGGER.error("Failed to get CreeperEntity charged field", e);
+            LOGGER.error("Failed to get CreeperEntity.CHARGED field", e);
         }
     }
 
@@ -254,9 +236,9 @@ public class DontGetHurt implements ModInitializer {
                 if (!charged) {
                     // 使用 NBT 方式设置充能状态
                     NbtCompound nbt = new NbtCompound();
-                    creeper.writeNbt(nbt);
+                    creeper.save(nbt);
                     nbt.putBoolean("powered", true);
-                    creeper.readNbt(nbt);
+                    creeper.load(nbt);
                 }
                 creeper.setTarget(player);
                 world.spawnEntityAndPassengers(creeper);
