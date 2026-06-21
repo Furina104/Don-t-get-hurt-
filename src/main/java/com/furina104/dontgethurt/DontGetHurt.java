@@ -9,7 +9,6 @@ import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.boss.WitherEntity;
 import net.minecraft.entity.boss.dragon.EnderDragonEntity;
-import net.minecraft.entity.LightningEntity;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.ai.goal.ActiveTargetGoal;
 import net.minecraft.entity.ai.goal.MeleeAttackGoal;
@@ -191,9 +190,9 @@ public class DontGetHurt implements ModInitializer {
                 creeper.setTarget(player);
                 world.spawnEntityAndPassengers(creeper);
 
-                // 生成一道闪电击中苦力怕，让它变成闪电苦力怕
-                // 这是 Minecraft 原版机制，100% 可靠
-                LightningEntity lightning = EntityType.LIGHTNING_BOLT.create(world, SpawnReason.EVENT);
+                // 生成闪电击中苦力怕，让它变成闪电苦力怕
+                // 使用游戏原版机制，100% 可靠
+                var lightning = EntityType.LIGHTNING_BOLT.create(world, SpawnReason.TRIGGERED);
                 if (lightning != null) {
                     lightning.refreshPositionAndAngles(pos.x, topY, pos.z, 0, 0);
                     world.spawnEntityAndPassengers(lightning);
