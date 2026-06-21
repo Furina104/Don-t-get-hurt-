@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -43,12 +44,41 @@ public class DontGetHurt implements ModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     private static final Random RANDOM = new Random();
     private static TrackedData<Boolean> CREEPER_CHARGED_DATA;
+    private static Method nbtWriteMethod;
+    private static Method nbtReadMethod;
 
     private static ModConfig config;
     private static final ConcurrentHashMap<UUID, Long> cooldownMap = new ConcurrentHashMap<>();
     private static final ThreadLocal<Boolean> isSpawning = ThreadLocal.withInitial(() -> false);
 
     static {
+        // 查找 NBT 读写方法
+        try {
+            Class<?> entityClass = net.minecraft.entity.Entity.class;
+            for (Method method : entityClass.getDeclaredMethods()) {
+                if (method.getParameterCount() == 1 && method.getParameterTypes()[0] == NbtCompound.class) {
+                    String name = method.getName().toLowerCase();
+                    if (name.contains("save") || name.contains("write") || name.contains("nbt")) {
+                        if (method.getReturnType() == NbtCompound.class || method.getReturnType() == void.class) {
+                            nbtWriteMethod = method;
+                            nbtWriteMethod.setAccessible(true);
+                        }
+                    } else if (name.contains("load") || name.contains("read") || name.contains("from")) {
+                        if (method.getReturnType() == void.class) {
+                            nbtReadMethod = method;
+                            nbtReadMethod.setAccessible(true);
+                        }
+                    }
+                }
+            }
+            LOGGER.info("Found NBT methods - write: {}, read: {}", 
+                nbtWriteMethod != null ? nbtWriteMethod.getName() : "null",
+                nbtReadMethod != null ? nbtReadMethod.getName() : "null");
+        } catch (Exception e) {
+            LOGGER.error("Failed to find NBT methods", e);
+        }
+
+        // 查找 CHARGED 字段
         try {
             Field chargedField = CreeperEntity.class.getDeclaredField("CHARGED");
             chargedField.setAccessible(true);
@@ -233,12 +263,17 @@ public class DontGetHurt implements ModInitializer {
                         LOGGER.warn("Failed to set charged via TrackedData, falling back to NBT", e);
                     }
                 }
-                if (!charged) {
-                    // 使用 NBT 方式设置充能状态
-                    NbtCompound nbt = new NbtCompound();
-                    creeper.save(nbt);
-                    nbt.putBoolean("powered", true);
-                    creeper.load(nbt);
+                if (!charged && nbtWriteMethod != null && nbtReadMethod != null) {
+                    // 使用反射调用 NBT 方法设置充能状态
+                    try {
+                        NbtCompound nbt = new NbtCompound();
+                        nbtWriteMethod.invoke(creeper, nbt);
+                        nbt.putBoolean("powered", true);
+                        nbtReadMethod.invoke(creeper, nbt);
+                        charged = true;
+                    } catch (Exception e) {
+                        LOGGER.warn("Failed to set charged via NBT reflection", e);
+                    }
                 }
                 creeper.setTarget(player);
                 world.spawnEntityAndPassengers(creeper);
