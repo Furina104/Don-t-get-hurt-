@@ -45,6 +45,7 @@ public class DontGetHurt implements ModInitializer {
     private static final Random RANDOM = new Random();
     private static TrackedData<Boolean> CREEPER_CHARGED_DATA;
     private static Method nbtWriteMethod;
+    private static boolean nbtWriteHasParam = false;
     private static Method nbtReadMethod;
 
     private static ModConfig config;
@@ -55,38 +56,51 @@ public class DontGetHurt implements ModInitializer {
         // 查找 NBT 读写方法
         try {
             Class<?> entityClass = net.minecraft.entity.Entity.class;
-            Method[] methods = entityClass.getDeclaredMethods();
-            
-            // 查找写方法（返回 NbtCompound 的方法）
-            for (Method method : methods) {
-                if (method.getReturnType() == NbtCompound.class) {
-                    String name = method.getName().toLowerCase();
-                    // 优先选择名字包含 save 或 write 的方法
-                    if (name.contains("save") || name.contains("write") || name.contains("nbt")) {
-                        nbtWriteMethod = method;
-                        nbtWriteMethod.setAccessible(true);
-                        break;
+            Method saveWithoutIdMethod = null;
+            Method saveMethod = null;
+            Method loadMethod = null;
+
+            for (Method method : entityClass.getDeclaredMethods()) {
+                String name = method.getName();
+                // 查找无参数、返回 NbtCompound 的方法（如 saveWithoutId）
+                if (method.getParameterCount() == 0 && method.getReturnType() == NbtCompound.class) {
+                    if (name.contains("WithoutId") || name.contains("save") || name.contains("write")) {
+                        saveWithoutIdMethod = method;
+                        saveWithoutIdMethod.setAccessible(true);
                     }
                 }
-            }
-            
-            // 查找读方法（接受 NbtCompound 参数的方法）
-            for (Method method : methods) {
-                if (method.getParameterCount() == 1 && method.getParameterTypes()[0] == NbtCompound.class) {
-                    String name = method.getName().toLowerCase();
+                // 查找一个 NbtCompound 参数、返回 NbtCompound 的方法（如 save）
+                if (method.getParameterCount() == 1 && method.getParameterTypes()[0] == NbtCompound.class
+                    && method.getReturnType() == NbtCompound.class) {
+                    if (name.contains("save") || name.contains("write")) {
+                        saveMethod = method;
+                        saveMethod.setAccessible(true);
+                    }
+                }
+                // 查找一个 NbtCompound 参数、返回 void 的方法（如 load）
+                if (method.getParameterCount() == 1 && method.getParameterTypes()[0] == NbtCompound.class
+                    && method.getReturnType() == void.class) {
                     if (name.contains("load") || name.contains("read") || name.contains("from")) {
-                        nbtReadMethod = method;
-                        nbtReadMethod.setAccessible(true);
-                        break;
+                        loadMethod = method;
+                        loadMethod.setAccessible(true);
                     }
                 }
             }
-            
-            LOGGER.info("Found NBT methods - write: {} (params={}), read: {} (params={})", 
+
+            // 优先使用 saveWithoutId，其次使用 save
+            if (saveWithoutIdMethod != null) {
+                nbtWriteMethod = saveWithoutIdMethod;
+                nbtWriteHasParam = false;
+            } else if (saveMethod != null) {
+                nbtWriteMethod = saveMethod;
+                nbtWriteHasParam = true;
+            }
+            nbtReadMethod = loadMethod;
+
+            LOGGER.info("Found NBT methods - write: {} (hasParam: {}), read: {}",
                 nbtWriteMethod != null ? nbtWriteMethod.getName() : "null",
-                nbtWriteMethod != null ? nbtWriteMethod.getParameterCount() : -1,
-                nbtReadMethod != null ? nbtReadMethod.getName() : "null",
-                nbtReadMethod != null ? nbtReadMethod.getParameterCount() : -1);
+                nbtWriteHasParam,
+                nbtReadMethod != null ? nbtReadMethod.getName() : "null");
         } catch (Exception e) {
             LOGGER.error("Failed to find NBT methods", e);
         }
@@ -109,7 +123,6 @@ public class DontGetHurt implements ModInitializer {
     }
 
     public static ModConfig getConfig() {
-        // 每次都从 ConfigHolder 获取最新配置，确保修改后实时生效
         return AutoConfig.getConfigHolder(ModConfig.class).getConfig();
     }
 
@@ -117,19 +130,16 @@ public class DontGetHurt implements ModInitializer {
      * 从启用的选项中随机选择并生成生物
      */
     public static void spawnMobs(ServerWorld world, ServerPlayerEntity player) {
-        // 每次都获取最新配置，确保修改后实时生效
         ModConfig currentConfig = getConfig();
-        
+
         if (!currentConfig.enabled) {
             return;
         }
 
-        // 递归保护：防止生成生物过程中造成的伤害再次触发生成
         if (isSpawning.get()) {
             return;
         }
 
-        // 检查冷却时间
         if (currentConfig.cooldownTicks > 0) {
             long currentTime = world.getTime();
             Long lastSpawn = cooldownMap.get(player.getUuid());
@@ -139,7 +149,6 @@ public class DontGetHurt implements ModInitializer {
             cooldownMap.put(player.getUuid(), currentTime);
         }
 
-        // 收集启用的生物类型
         List<Runnable> enabledMobs = new ArrayList<>();
         if (currentConfig.enableWither) {
             enabledMobs.add(() -> spawnWither(world, player));
@@ -164,25 +173,18 @@ public class DontGetHurt implements ModInitializer {
             return;
         }
 
-        // 设置生成中标志（在确认要生成后再设置）
         isSpawning.set(true);
         try {
-            // 随机选择一种生物生成
             int option = RANDOM.nextInt(enabledMobs.size());
             enabledMobs.get(option).run();
         } finally {
-            // 清除生成中标志
             isSpawning.remove();
         }
     }
 
-    /**
-     * 在玩家附近半径内随机位置生成
-     */
     private static Vec3d getRandomSpawnPos(ServerPlayerEntity player) {
         ModConfig currentConfig = getConfig();
         double angle = RANDOM.nextDouble() * 2 * Math.PI;
-        // 最小半径 2 格，避免生成在玩家身上
         double minRadius = 2.0;
         double radius = minRadius + RANDOM.nextDouble() * Math.max(0, currentConfig.spawnRadius - minRadius);
         double x = player.getX() + Math.cos(angle) * radius;
@@ -211,15 +213,12 @@ public class DontGetHurt implements ModInitializer {
 
     private static void spawnWarden(ServerWorld world, ServerPlayerEntity player) {
         Vec3d pos = getRandomSpawnPos(player);
-        // 找到地面位置，避免生成在半空中或卡在方块里
         int topY = world.getTopY(Heightmap.Type.MOTION_BLOCKING, (int) Math.floor(pos.x), (int) Math.floor(pos.z));
         BlockPos blockPos = new BlockPos((int) Math.floor(pos.x), topY, (int) Math.floor(pos.z));
 
         WardenEntity warden = EntityType.WARDEN.spawn(world, blockPos, SpawnReason.EVENT);
         if (warden != null) {
             warden.setPersistent();
-
-            // 生成后设置，避免被初始化逻辑覆盖
             warden.increaseAngerAt(player, 150, false);
             warden.setAttacker(player);
             warden.setTarget(player);
@@ -229,10 +228,8 @@ public class DontGetHurt implements ModInitializer {
 
     private static void spawnZombiesAndSkeletons(ServerWorld world, ServerPlayerEntity player) {
         ModConfig currentConfig = getConfig();
-        // 生成僵尸
         for (int i = 0; i < currentConfig.zombieCount; i++) {
             Vec3d pos = getRandomSpawnPos(player);
-            // 找到地面位置，避免生成在半空中或卡在方块里
             int topY = world.getTopY(Heightmap.Type.MOTION_BLOCKING, (int) Math.floor(pos.x), (int) Math.floor(pos.z));
             ZombieEntity zombie = EntityType.ZOMBIE.create(world, SpawnReason.EVENT);
             if (zombie != null) {
@@ -241,15 +238,12 @@ public class DontGetHurt implements ModInitializer {
                 world.spawnEntityAndPassengers(zombie);
             }
         }
-        // 生成骷髅
         for (int i = 0; i < currentConfig.skeletonCount; i++) {
             Vec3d pos = getRandomSpawnPos(player);
-            // 找到地面位置，避免生成在半空中或卡在方块里
             int topY = world.getTopY(Heightmap.Type.MOTION_BLOCKING, (int) Math.floor(pos.x), (int) Math.floor(pos.z));
             BlockPos blockPos = new BlockPos((int) Math.floor(pos.x), topY, (int) Math.floor(pos.z));
             SkeletonEntity skeleton = EntityType.SKELETON.spawn(world, blockPos, SpawnReason.EVENT);
             if (skeleton != null) {
-                // 确保骷髅有弓（spawn方法会自动装备，但保险起见再确认一下）
                 skeleton.equipStack(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
                 skeleton.setTarget(player);
             }
@@ -260,11 +254,11 @@ public class DontGetHurt implements ModInitializer {
         ModConfig currentConfig = getConfig();
         for (int i = 0; i < currentConfig.chargedCreeperCount; i++) {
             Vec3d pos = getRandomSpawnPos(player);
-            // 找到地面位置，避免生成在半空中或卡在方块里
             int topY = world.getTopY(Heightmap.Type.MOTION_BLOCKING, (int) Math.floor(pos.x), (int) Math.floor(pos.z));
             CreeperEntity creeper = EntityType.CREEPER.create(world, SpawnReason.EVENT);
             if (creeper != null) {
                 creeper.refreshPositionAndAngles(pos.x, topY, pos.z, 0, 0);
+
                 // 设置为闪电苦力怕（充能状态）
                 // 优先使用 TrackedData 方式，如果失败则使用 NBT 方式
                 boolean charged = false;
@@ -272,29 +266,35 @@ public class DontGetHurt implements ModInitializer {
                     try {
                         creeper.getDataTracker().set(CREEPER_CHARGED_DATA, true);
                         charged = true;
+                        LOGGER.debug("Set charged via TrackedData");
                     } catch (Exception e) {
                         LOGGER.warn("Failed to set charged via TrackedData, falling back to NBT", e);
                     }
                 }
+
                 if (!charged && nbtWriteMethod != null && nbtReadMethod != null) {
                     // 使用反射调用 NBT 方法设置充能状态
                     try {
                         NbtCompound nbt;
-                        if (nbtWriteMethod.getParameterCount() == 0) {
-                            // 无参数的写方法，直接调用获取 NBT
-                            nbt = (NbtCompound) nbtWriteMethod.invoke(creeper);
-                        } else {
-                            // 有参数的写方法，传入新的 NbtCompound
+                        if (nbtWriteHasParam) {
                             nbt = (NbtCompound) nbtWriteMethod.invoke(creeper, new NbtCompound());
+                        } else {
+                            nbt = (NbtCompound) nbtWriteMethod.invoke(creeper);
                         }
                         nbt.putBoolean("powered", true);
+                        nbt.putShort("Fuse", (short) 1);
                         nbtReadMethod.invoke(creeper, nbt);
                         charged = true;
-                        LOGGER.info("Successfully set creeper charged via NBT");
+                        LOGGER.info("Set charged via NBT - powered: {}, Fuse: {}", nbt.getBoolean("powered"), nbt.getShort("Fuse"));
                     } catch (Exception e) {
                         LOGGER.warn("Failed to set charged via NBT reflection", e);
                     }
                 }
+
+                if (!charged) {
+                    LOGGER.warn("All methods failed to set creeper as charged");
+                }
+
                 creeper.setTarget(player);
                 world.spawnEntityAndPassengers(creeper);
             }
@@ -305,12 +305,10 @@ public class DontGetHurt implements ModInitializer {
         ModConfig currentConfig = getConfig();
         for (int i = 0; i < currentConfig.ironGolemCount; i++) {
             Vec3d pos = getRandomSpawnPos(player);
-            // 找到地面位置，避免生成在半空中或卡在方块里
             int topY = world.getTopY(Heightmap.Type.MOTION_BLOCKING, (int) Math.floor(pos.x), (int) Math.floor(pos.z));
             IronGolemEntity ironGolem = EntityType.IRON_GOLEM.create(world, SpawnReason.EVENT);
             if (ironGolem != null) {
                 ironGolem.refreshPositionAndAngles(pos.x, topY, pos.z, 0, 0);
-                // 让铁傀儡对玩家产生敌意
                 ironGolem.setPlayerCreated(false);
                 ironGolem.setTarget(player);
                 world.spawnEntityAndPassengers(ironGolem);
