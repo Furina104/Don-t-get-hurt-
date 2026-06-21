@@ -14,6 +14,7 @@
   "license": "MIT",
   "icon": "assets/dont_get_hurt/icon.png",
   "environment": "*",
+  "accessWidener": "dont_get_hurt.accesswidener",
   "entrypoints": {
     "main": [
       "com.furina104.dontgethurt.DontGetHurt"
