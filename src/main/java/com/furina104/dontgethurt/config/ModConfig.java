@@ -14,7 +14,7 @@ public class ModConfig implements ConfigData {
     @ConfigEntry.Category("general")
     @ConfigEntry.Gui.Tooltip
     @ConfigEntry.BoundedDiscrete(min = 1, max = 50)
-    public int spawnRadius = 5;
+    public int spawnRadius = 15;
 
     @ConfigEntry.Category("general")
     @ConfigEntry.Gui.Tooltip

@@ -65,14 +65,18 @@ public class DontGetHurt implements ModInitializer {
     }
 
     public static ModConfig getConfig() {
-        return config;
+        // 每次都从 ConfigHolder 获取最新配置，确保修改后实时生效
+        return AutoConfig.getConfigHolder(ModConfig.class).getConfig();
     }
 
     /**
      * 从启用的选项中随机选择并生成生物
      */
     public static void spawnMobs(ServerWorld world, ServerPlayerEntity player) {
-        if (!config.enabled) {
+        // 每次都获取最新配置，确保修改后实时生效
+        ModConfig currentConfig = getConfig();
+        
+        if (!currentConfig.enabled) {
             return;
         }
 
@@ -82,10 +86,10 @@ public class DontGetHurt implements ModInitializer {
         }
 
         // 检查冷却时间
-        if (config.cooldownTicks > 0) {
+        if (currentConfig.cooldownTicks > 0) {
             long currentTime = world.getTime();
             Long lastSpawn = cooldownMap.get(player.getUuid());
-            if (lastSpawn != null && currentTime - lastSpawn < config.cooldownTicks) {
+            if (lastSpawn != null && currentTime - lastSpawn < currentConfig.cooldownTicks) {
                 return;
             }
             cooldownMap.put(player.getUuid(), currentTime);
@@ -93,22 +97,22 @@ public class DontGetHurt implements ModInitializer {
 
         // 收集启用的生物类型
         List<Runnable> enabledMobs = new ArrayList<>();
-        if (config.enableWither) {
+        if (currentConfig.enableWither) {
             enabledMobs.add(() -> spawnWither(world, player));
         }
-        if (config.enableEnderDragon) {
+        if (currentConfig.enableEnderDragon) {
             enabledMobs.add(() -> spawnEnderDragon(world, player));
         }
-        if (config.enableWarden) {
+        if (currentConfig.enableWarden) {
             enabledMobs.add(() -> spawnWarden(world, player));
         }
-        if (config.enableZombiesAndSkeletons) {
+        if (currentConfig.enableZombiesAndSkeletons) {
             enabledMobs.add(() -> spawnZombiesAndSkeletons(world, player));
         }
-        if (config.enableChargedCreepers) {
+        if (currentConfig.enableChargedCreepers) {
             enabledMobs.add(() -> spawnChargedCreepers(world, player));
         }
-        if (config.enableHostileIronGolems) {
+        if (currentConfig.enableHostileIronGolems) {
             enabledMobs.add(() -> spawnHostileIronGolems(world, player));
         }
 
@@ -132,8 +136,11 @@ public class DontGetHurt implements ModInitializer {
      * 在玩家附近半径内随机位置生成
      */
     private static Vec3d getRandomSpawnPos(ServerPlayerEntity player) {
+        ModConfig currentConfig = getConfig();
         double angle = RANDOM.nextDouble() * 2 * Math.PI;
-        double radius = RANDOM.nextDouble() * config.spawnRadius;
+        // 最小半径 2 格，避免生成在玩家身上
+        double minRadius = 2.0;
+        double radius = minRadius + RANDOM.nextDouble() * Math.max(0, currentConfig.spawnRadius - minRadius);
         double x = player.getX() + Math.cos(angle) * radius;
         double z = player.getZ() + Math.sin(angle) * radius;
         double y = player.getY();
@@ -177,20 +184,25 @@ public class DontGetHurt implements ModInitializer {
     }
 
     private static void spawnZombiesAndSkeletons(ServerWorld world, ServerPlayerEntity player) {
+        ModConfig currentConfig = getConfig();
         // 生成僵尸
-        for (int i = 0; i < config.zombieCount; i++) {
+        for (int i = 0; i < currentConfig.zombieCount; i++) {
             Vec3d pos = getRandomSpawnPos(player);
+            // 找到地面位置，避免生成在半空中或卡在方块里
+            int topY = world.getTopY(Heightmap.Type.MOTION_BLOCKING, (int) Math.floor(pos.x), (int) Math.floor(pos.z));
             ZombieEntity zombie = EntityType.ZOMBIE.create(world, SpawnReason.EVENT);
             if (zombie != null) {
-                zombie.refreshPositionAndAngles(pos.x, pos.y, pos.z, 0, 0);
+                zombie.refreshPositionAndAngles(pos.x, topY, pos.z, 0, 0);
                 zombie.setTarget(player);
                 world.spawnEntityAndPassengers(zombie);
             }
         }
         // 生成骷髅
-        for (int i = 0; i < config.skeletonCount; i++) {
+        for (int i = 0; i < currentConfig.skeletonCount; i++) {
             Vec3d pos = getRandomSpawnPos(player);
-            BlockPos blockPos = BlockPos.ofFloored(pos.x, pos.y, pos.z);
+            // 找到地面位置，避免生成在半空中或卡在方块里
+            int topY = world.getTopY(Heightmap.Type.MOTION_BLOCKING, (int) Math.floor(pos.x), (int) Math.floor(pos.z));
+            BlockPos blockPos = new BlockPos((int) Math.floor(pos.x), topY, (int) Math.floor(pos.z));
             SkeletonEntity skeleton = EntityType.SKELETON.spawn(world, blockPos, SpawnReason.EVENT);
             if (skeleton != null) {
                 // 确保骷髅有弓（spawn方法会自动装备，但保险起见再确认一下）
@@ -201,11 +213,14 @@ public class DontGetHurt implements ModInitializer {
     }
 
     private static void spawnChargedCreepers(ServerWorld world, ServerPlayerEntity player) {
-        for (int i = 0; i < config.chargedCreeperCount; i++) {
+        ModConfig currentConfig = getConfig();
+        for (int i = 0; i < currentConfig.chargedCreeperCount; i++) {
             Vec3d pos = getRandomSpawnPos(player);
+            // 找到地面位置，避免生成在半空中或卡在方块里
+            int topY = world.getTopY(Heightmap.Type.MOTION_BLOCKING, (int) Math.floor(pos.x), (int) Math.floor(pos.z));
             CreeperEntity creeper = EntityType.CREEPER.create(world, SpawnReason.EVENT);
             if (creeper != null) {
-                creeper.refreshPositionAndAngles(pos.x, pos.y, pos.z, 0, 0);
+                creeper.refreshPositionAndAngles(pos.x, topY, pos.z, 0, 0);
                 // 设置为闪电苦力怕（充能状态）
                 if (CREEPER_CHARGED_DATA != null) {
                     creeper.getDataTracker().set(CREEPER_CHARGED_DATA, true);
@@ -217,11 +232,14 @@ public class DontGetHurt implements ModInitializer {
     }
 
     private static void spawnHostileIronGolems(ServerWorld world, ServerPlayerEntity player) {
-        for (int i = 0; i < config.ironGolemCount; i++) {
+        ModConfig currentConfig = getConfig();
+        for (int i = 0; i < currentConfig.ironGolemCount; i++) {
             Vec3d pos = getRandomSpawnPos(player);
+            // 找到地面位置，避免生成在半空中或卡在方块里
+            int topY = world.getTopY(Heightmap.Type.MOTION_BLOCKING, (int) Math.floor(pos.x), (int) Math.floor(pos.z));
             IronGolemEntity ironGolem = EntityType.IRON_GOLEM.create(world, SpawnReason.EVENT);
             if (ironGolem != null) {
-                ironGolem.refreshPositionAndAngles(pos.x, pos.y, pos.z, 0, 0);
+                ironGolem.refreshPositionAndAngles(pos.x, topY, pos.z, 0, 0);
                 // 让铁傀儡对玩家产生敌意
                 ironGolem.setPlayerCreated(false);
                 ironGolem.setTarget(player);
