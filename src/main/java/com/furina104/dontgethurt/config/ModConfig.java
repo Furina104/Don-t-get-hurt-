@@ -19,7 +19,7 @@ public class ModConfig implements ConfigData {
     @ConfigEntry.Category("general")
     @ConfigEntry.Gui.Tooltip
     @ConfigEntry.BoundedDiscrete(min = 0, max = 6000)
-    public int cooldownTicks = 0;
+    public int cooldownTicks = 100;
 
     @ConfigEntry.Category("mobs")
     @ConfigEntry.Gui.Tooltip

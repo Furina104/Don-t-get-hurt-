@@ -45,6 +45,7 @@ public class DontGetHurt implements ModInitializer {
 
     private static ModConfig config;
     private static final ConcurrentHashMap<UUID, Long> cooldownMap = new ConcurrentHashMap<>();
+    private static final ThreadLocal<Boolean> isSpawning = ThreadLocal.withInitial(() -> false);
 
     static {
         try {
@@ -72,6 +73,11 @@ public class DontGetHurt implements ModInitializer {
      */
     public static void spawnMobs(ServerWorld world, ServerPlayerEntity player) {
         if (!config.enabled) {
+            return;
+        }
+
+        // 递归保护：防止生成生物过程中造成的伤害再次触发生成
+        if (isSpawning.get()) {
             return;
         }
 
@@ -110,9 +116,16 @@ public class DontGetHurt implements ModInitializer {
             return;
         }
 
-        // 随机选择一种生物生成
-        int option = RANDOM.nextInt(enabledMobs.size());
-        enabledMobs.get(option).run();
+        // 设置生成中标志（在确认要生成后再设置）
+        isSpawning.set(true);
+        try {
+            // 随机选择一种生物生成
+            int option = RANDOM.nextInt(enabledMobs.size());
+            enabledMobs.get(option).run();
+        } finally {
+            // 清除生成中标志
+            isSpawning.remove();
+        }
     }
 
     /**
@@ -209,10 +222,9 @@ public class DontGetHurt implements ModInitializer {
             IronGolemEntity ironGolem = EntityType.IRON_GOLEM.create(world, SpawnReason.EVENT);
             if (ironGolem != null) {
                 ironGolem.refreshPositionAndAngles(pos.x, pos.y, pos.z, 0, 0);
-                // 让铁傀儡对玩家产生敌意并攻击玩家
+                // 让铁傀儡对玩家产生敌意
                 ironGolem.setPlayerCreated(false);
                 ironGolem.setTarget(player);
-                ironGolem.tryAttack(world, player);
                 world.spawnEntityAndPassengers(ironGolem);
             }
         }
