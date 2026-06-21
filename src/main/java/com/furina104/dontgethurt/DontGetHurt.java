@@ -1,7 +1,6 @@
 package com.furina104.dontgethurt;
 
 import com.furina104.dontgethurt.config.ModConfig;
-import com.furina104.dontgethurt.mixin.CreeperEntityAccessor;
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.serializer.GsonConfigSerializer;
 import net.fabricmc.api.ModInitializer;
@@ -188,11 +187,6 @@ public class DontGetHurt implements ModInitializer {
             CreeperEntity creeper = EntityType.CREEPER.create(world, SpawnReason.EVENT);
             if (creeper != null) {
                 creeper.refreshPositionAndAngles(pos.x, topY, pos.z, 0, 0);
-
-                // 设置为闪电苦力怕（充能状态）
-                // 使用 Mixin @Accessor 访问 CHARGED 私有字段
-                creeper.getDataTracker().set(CreeperEntityAccessor.getCharged(), true);
-
                 creeper.setTarget(player);
                 world.spawnEntityAndPassengers(creeper);
             }

@@ -39,6 +39,7 @@ public class ModConfig implements ConfigData {
 
     @ConfigEntry.Category("mobs")
     @ConfigEntry.Gui.Tooltip
+    @ConfigEntry.Name("苦力怕")
     public boolean enableChargedCreepers = true;
 
     @ConfigEntry.Category("mobs")
@@ -58,6 +59,7 @@ public class ModConfig implements ConfigData {
     @ConfigEntry.Category("amounts")
     @ConfigEntry.Gui.Tooltip
     @ConfigEntry.BoundedDiscrete(min = 1, max = 20)
+    @ConfigEntry.Name("苦力怕数量")
     public int chargedCreeperCount = 10;
 
     @ConfigEntry.Category("amounts")

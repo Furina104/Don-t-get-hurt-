@@ -3,8 +3,7 @@
   "package": "com.furina104.dontgethurt.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "LivingEntityMixin",
-    "CreeperEntityAccessor"
+    "LivingEntityMixin"
   ],
   "client": [],
   "injectors": {
