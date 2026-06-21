@@ -55,25 +55,38 @@ public class DontGetHurt implements ModInitializer {
         // 查找 NBT 读写方法
         try {
             Class<?> entityClass = net.minecraft.entity.Entity.class;
-            for (Method method : entityClass.getDeclaredMethods()) {
-                if (method.getParameterCount() == 1 && method.getParameterTypes()[0] == NbtCompound.class) {
+            Method[] methods = entityClass.getDeclaredMethods();
+            
+            // 查找写方法（返回 NbtCompound 的方法）
+            for (Method method : methods) {
+                if (method.getReturnType() == NbtCompound.class) {
                     String name = method.getName().toLowerCase();
+                    // 优先选择名字包含 save 或 write 的方法
                     if (name.contains("save") || name.contains("write") || name.contains("nbt")) {
-                        if (method.getReturnType() == NbtCompound.class || method.getReturnType() == void.class) {
-                            nbtWriteMethod = method;
-                            nbtWriteMethod.setAccessible(true);
-                        }
-                    } else if (name.contains("load") || name.contains("read") || name.contains("from")) {
-                        if (method.getReturnType() == void.class) {
-                            nbtReadMethod = method;
-                            nbtReadMethod.setAccessible(true);
-                        }
+                        nbtWriteMethod = method;
+                        nbtWriteMethod.setAccessible(true);
+                        break;
                     }
                 }
             }
-            LOGGER.info("Found NBT methods - write: {}, read: {}", 
+            
+            // 查找读方法（接受 NbtCompound 参数的方法）
+            for (Method method : methods) {
+                if (method.getParameterCount() == 1 && method.getParameterTypes()[0] == NbtCompound.class) {
+                    String name = method.getName().toLowerCase();
+                    if (name.contains("load") || name.contains("read") || name.contains("from")) {
+                        nbtReadMethod = method;
+                        nbtReadMethod.setAccessible(true);
+                        break;
+                    }
+                }
+            }
+            
+            LOGGER.info("Found NBT methods - write: {} (params={}), read: {} (params={})", 
                 nbtWriteMethod != null ? nbtWriteMethod.getName() : "null",
-                nbtReadMethod != null ? nbtReadMethod.getName() : "null");
+                nbtWriteMethod != null ? nbtWriteMethod.getParameterCount() : -1,
+                nbtReadMethod != null ? nbtReadMethod.getName() : "null",
+                nbtReadMethod != null ? nbtReadMethod.getParameterCount() : -1);
         } catch (Exception e) {
             LOGGER.error("Failed to find NBT methods", e);
         }
@@ -266,11 +279,18 @@ public class DontGetHurt implements ModInitializer {
                 if (!charged && nbtWriteMethod != null && nbtReadMethod != null) {
                     // 使用反射调用 NBT 方法设置充能状态
                     try {
-                        NbtCompound nbt = new NbtCompound();
-                        nbtWriteMethod.invoke(creeper, nbt);
+                        NbtCompound nbt;
+                        if (nbtWriteMethod.getParameterCount() == 0) {
+                            // 无参数的写方法，直接调用获取 NBT
+                            nbt = (NbtCompound) nbtWriteMethod.invoke(creeper);
+                        } else {
+                            // 有参数的写方法，传入新的 NbtCompound
+                            nbt = (NbtCompound) nbtWriteMethod.invoke(creeper, new NbtCompound());
+                        }
                         nbt.putBoolean("powered", true);
                         nbtReadMethod.invoke(creeper, nbt);
                         charged = true;
+                        LOGGER.info("Successfully set creeper charged via NBT");
                     } catch (Exception e) {
                         LOGGER.warn("Failed to set charged via NBT reflection", e);
                     }
