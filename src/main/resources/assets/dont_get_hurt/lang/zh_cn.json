@@ -26,8 +26,8 @@
   "text.autoconfig.dont_get_hurt.option.enableZombiesAndSkeletons": "启用僵尸和骷髅",
   "text.autoconfig.dont_get_hurt.option.enableZombiesAndSkeletons.@Tooltip": "是否允许生成僵尸和骷髅",
 
-  "text.autoconfig.dont_get_hurt.option.enableChargedCreepers": "启用高压爬行者",
-  "text.autoconfig.dont_get_hurt.option.enableChargedCreepers.@Tooltip": "是否允许生成高压爬行者（闪电苦力怕）",
+  "text.autoconfig.dont_get_hurt.option.enableChargedCreepers": "启用苦力怕",
+  "text.autoconfig.dont_get_hurt.option.enableChargedCreepers.@Tooltip": "是否允许生成苦力怕",
 
   "text.autoconfig.dont_get_hurt.option.enableHostileIronGolems": "启用敌对铁傀儡",
   "text.autoconfig.dont_get_hurt.option.enableHostileIronGolems.@Tooltip": "是否允许生成敌对铁傀儡",
@@ -38,8 +38,8 @@
   "text.autoconfig.dont_get_hurt.option.skeletonCount": "骷髅数量",
   "text.autoconfig.dont_get_hurt.option.skeletonCount.@Tooltip": "每次生成的骷髅数量",
 
-  "text.autoconfig.dont_get_hurt.option.chargedCreeperCount": "高压爬行者数量",
-  "text.autoconfig.dont_get_hurt.option.chargedCreeperCount.@Tooltip": "每次生成的高压爬行者数量",
+  "text.autoconfig.dont_get_hurt.option.chargedCreeperCount": "苦力怕数量",
+  "text.autoconfig.dont_get_hurt.option.chargedCreeperCount.@Tooltip": "每次生成的苦力怕数量",
 
   "text.autoconfig.dont_get_hurt.option.ironGolemCount": "铁傀儡数量",
   "text.autoconfig.dont_get_hurt.option.ironGolemCount.@Tooltip": "每次生成的铁傀儡数量"
